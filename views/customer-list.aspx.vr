@@ -1,0 +1,210 @@
+﻿Using System
+Using System.Data
+Using System.Configuration
+Using System.Collections
+Using System.Web
+Using System.Web.Security
+Using System.Web.UI
+Using System.Web.UI.WebControls
+Using System.Web.UI.WebControls.WebParts
+Using System.Web.UI.HtmlControls
+
+BegClass views_customer_list Partial(*Yes) Access(*Public) Extends(System.Web.UI.Page)
+    
+    DclDB DGDB DBName("*Public/DG Net Local") 
+                
+    DclDiskFile Customer +
+            Type(*Input) + 
+            Org(*Indexed) + 
+            Prefix(Customer_) + 
+            File("examples/CMastNewL2") +
+            ChkFmtId(*Ignore) + 
+            DB(DGDB) +
+            ImpOpen(*No)  
+               
+    DclMemoryFile MemFile2 +
+				DBDesc(DGDB) +
+				FileDesc("examples/CMastNewL2") +
+				RnmFmt(Customers) +
+				Prefix(Customer_) 
+
+    DclProp FirstCMName Like(Customer_CMName) Access(*Public) 
+    DclProp FirstCMCustNo Like(Customer_CMCustNo) Access(*Public) 
+
+    DclProp LastCMName Like(Customer_CMName) Access(*Public) 
+    DclProp LastCMCustNo Like(Customer_CMCustNo) Access(*Public) 
+
+    DclProp MoreRows Type(*Boolean) Access(*Public) 
+
+    DclFld RowsToDisplay Type(*Integer4) 
+
+    DclFld sh Type(AppStateHelpers) 
+
+    BegSr OpenData
+         Connect DGDB 
+         Open Customer 
+    EndSr
+
+    BegSr CloseData
+        Close *All
+        Disconnect DGDB
+    EndSr
+
+    BegSr CheckForPositionFilePointer
+        If Session['status'] <> *Nothing
+            If Session['status'].ToString() = 'update'
+                Customer_CMName = Session['update-customer-name'].ToString()
+                Customer_CMCustNo = Session['update-customer-number'].ToString()
+            ElseIf Session['status'].ToString() = 'cancel' 
+                Customer_CMName = Session['first-customer-name'].ToString()
+                Customer_CMCustNo = Session['first-customer-number'].ToString()
+            EndIf 
+
+            SetLL Customer Key(Customer_CMName, Customer_CMCustNo)
+
+            Session.Remove('status') 
+        EndIf 
+    EndSr 
+
+    BegSr LoadGrid 
+        DclFld RowCounter Type(*Integer4) 
+
+        Do FromVal(1) ToVal(*This.RowsToDisplay) Index(RowCounter)
+            Read Customer 
+            If Customer.IsEof()            
+                Leave
+            EndIf
+            //Write MemFile
+            Write MemFile2
+
+            If RowCounter = 1
+                Session['first-customer-name'] = Customer_CMName.Trim()
+                Session['first-customer-number'] = Customer_CMCustNo
+            EndIf
+        EndDo 
+
+        ViewState['last-customer-name'] = Customer_CMName.Trim()
+        ViewState['last-customer-number'] = Customer_CMCustNo
+        
+        gvCustomers.DataSource = MemFile2.DataSet.Tables[0]
+        gvCustomers.DataBind()
+    EndSr
+
+    BegSr Page_Load Access(*Private) Event(*This.Load)
+        DclSrParm sender Type(*Object)
+        DclSrParm e Type(System.EventArgs)
+
+        RowsToDisplay = 12
+
+        OpenData()
+        
+        gvCustomers.AutoGenerateColumns = *False 
+
+        If (NOT Page.IsPostBack)
+            // Older versions of Visual Studio didn't have the 
+            // checkbox in the GridView columns properties! 
+
+            CheckForPositionFilePointer()
+            LoadGrid()      
+        Else
+            //
+            // Called subsequent times that the page is displayed.
+            //
+        EndIf
+    EndSr
+
+    BegSr Page_Unload Access(*Private) Event(*This.Unload)
+        DclSrParm sender Type(*Object)
+        DclSrParm e Type(System.EventArgs)
+
+        CloseData() 
+
+        //
+        // Called when the page is unloaded.
+        //
+    EndSr
+
+	BegSr buttonNext_Click Access(*Private) Event(*This.buttonNext.Click)
+		DclSrParm sender Type(*Object)
+		DclSrParm e Type(System.EventArgs)
+
+        Customer_CMName = ViewState['last-customer-name'].ToString()
+        Customer_CMCustNo= ViewState['last-customer-number'].ToString()        
+
+        SetGT Customer Key(Customer_CMName, Customer_CMCustNo) 
+        LoadGrid() 
+	EndSr
+
+	BegSr buttonPositionTo_Click Access(*Private) Event(*This.buttonPositionTo.Click)
+		DclSrParm sender Type(*Object)
+		DclSrParm e Type(System.EventArgs)
+		
+	EndSr
+	
+	BegSr gvCustomers_RowCommand Access(*Private) Event(*This.gvCustomers.RowCommand)
+		DclSrParm sender Type(*Object)
+		DclSrParm e Type(System.Web.UI.WebControls.GridViewCommandEventArgs)
+
+        DclFld CommandName    Type(*String)
+        DclFld SelectedIndex  Type(*Integer4)
+        DclFld CustomerNumber Type(*Integer4) 
+
+        CommandName = e.CommandName
+        SelectedIndex = e.CommandArgument.ToString()
+        CustomerNumber = gvCustomers.DataKeys[SelectedIndex]['cmcustno'].ToString()
+
+        Session['update-customer-name'] = gvCustomers.DataKeys[SelectedIndex]['cmname'].ToString()
+        Session['update-customer-number'] = CustomerNumber
+
+        If CommandName.ToLower() = 'updateaction' 
+            Session['customer-number'] = CustomerNumber
+            Response.Redirect('customer-form.aspx')            
+        EndIf 
+	EndSr
+EndClass
+
+
+
+//    BegFunc CreateDataTable Type(DataTable) 
+//        DclFld tcktbl Type(DataTable)  
+//
+//        tcktbl = *New DataTable("Tickets")
+//
+//        //Added by JKC on 2/19/18 to write PP records to gvSearch as appropriate
+//		tcktbl.Columns.Add("VIEWEBILL",Type.GetType("System.String"))//View Ebill button
+//		tcktbl.Columns.Add("DEPT",Type.GetType("System.String"))//Department
+//		tcktbl.Columns.Add("TICKET1",Type.GetType("System.String"))//Ticket
+//		tcktbl.Columns.Add("TICKET2",Type.GetType("System.String"))//Ticket Sequence
+//		tcktbl.Columns.Add("DUEDATE",Type.GetType("System.String"))//Ticket Due Date
+//		tcktbl.Columns.Add("DESC",Type.GetType("System.String"))//Ticket Description
+//		tcktbl.Columns.Add("AMOUNTDUE",Type.GetType("System.Decimal"))//Ticket Amount Due
+//		tcktbl.Columns.Add("FREQUENCY",Type.GetType("System.String"))//Ticket Frequency
+//		tcktbl.Columns.Add("SUPPLEMENT",Type.GetType("System.String"))//Ticket Supplement No.
+//		tcktbl.Columns.Add("ACCOUNTNO",Type.GetType("System.String"))//Account No.
+//		tcktbl.Columns.Add("DUEDATENUM",Type.GetType("System.String"))//Account No.
+//
+//        DclFld dr Type(DataRow) 
+//
+//        dr = tcktbl.NewRow()
+//        dr("AMOUNTDUE") = 12.34
+//
+//        DclFld amt Type(*Packed) Len(12,2) 
+////
+////        amt = dr("AMOUNTDUE") *As System.Decimal  
+////
+////
+////
+////
+////
+////
+////
+////
+////
+////        
+////        dt = *New DataTable("Customers2")
+////        dt.Columns.Add("Customer_CMName", Type.GetType("System.String"))  
+////        dt.Columns.Add("Customer_CMCustNo", Type.GetType("System.Int32")) 
+//
+//        LeaveSr dt 
+//    EndFunc 
+

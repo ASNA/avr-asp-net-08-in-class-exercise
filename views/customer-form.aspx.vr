@@ -1,0 +1,172 @@
+﻿Using System
+Using System.Data
+Using System.Configuration
+Using System.Collections
+Using System.Web
+Using System.Web.Security
+Using System.Web.UI
+Using System.Web.UI.WebControls
+Using System.Web.UI.WebControls.WebParts
+Using System.Web.UI.HtmlControls
+
+Using ASNA.Helpers
+
+BegClass views_customer_form Partial(*Yes) Access(*Public) Extends(System.Web.UI.Page)    
+    
+    DclDB DGDB DBName('*Public/DG NET Local') 
+                
+    DclDiskFile CMastNewL1 +
+            Type(*Update) + 
+            Org(*Indexed) + 
+            File('Examples/CMastNewL1') +
+            DB(DGDB) +
+            ImpOpen(*No)
+
+    DclFld ReferringPage Type(*String) 
+
+    BegSr LoadStateList
+        DclFld sl Type(USStateList) New(DGDB)
+
+        field_CMState.DataTextField  = "Text"
+        field_CMState.DataValueField = "Value"
+        field_CMState.DataSource = sl.GetList()
+        field_CMState.DataBind()
+    EndSr 
+
+    BegSr OpenData
+        DclFld DBName Type(*String) 
+
+        DBName = Application['dbname'].ToString()
+
+        DGDB.DBName = Application['dbname'].ToString()
+
+        Connect DGDB
+        Open CMastNewL1
+    EndSr
+
+    BegSr CloseData 
+        Close *All
+        Disconnect DGDB 
+    EndSr
+
+    BegFunc ReadSingleRow Type(*Boolean) 
+        DclSrParm CustomerNumber Like(CMCustNo)
+
+        Chain CMastNewL1 Key(CustomerNumber) 
+
+        // Return true if you did find the customer.
+        LeaveSr CMastNewL1.IsFound()
+    EndFunc
+
+    BegSr Page_Load Access(*Private) Event(*This.Load)
+        DclSrParm sender Type(*Object)
+        DclSrParm e Type(System.EventArgs)
+
+        DclFld Name Type(*Char) Len(10)
+        DclFld Rate Type(*Packed) Len(12,2)
+
+        OpenData()
+
+        If (NOT Page.IsPostBack)
+            CMCustNo = Session['customer-number'].ToString()
+        
+            If NOT ReadSingleRow(CMCustNo) 
+                Response.Redirect(String.Format("customer-number.aspx?nf={0}", CMCustNo))
+            EndIf 
+
+            LoadStateList()
+
+            AssignFieldsToUI()
+
+            ReferringPage = Request.UrlReferrer.ToString()
+            Viewstate['referring-page'] = ReferringPage
+        Else
+            ReferringPage = Viewstate['referring-page'].ToString()
+        EndIf
+    EndSr
+
+    BegSr Page_Unload Access(*Private) Event(*This.Unload)
+        DclSrParm sender Type(*Object)
+        DclSrParm e Type(System.EventArgs)
+
+        CloseData()
+        //
+        // Called when the page is unloaded.
+        //
+    EndSr
+
+    BegSr AssignFieldsToUI
+        field_CMCustNo.Text = CMCustNo
+        field_CMName.Text = CMName.Trim()
+        field_CMAddr1.Text = CMAddr1.Trim()
+        field_CMCity.Text = CMCity
+
+        field_CMState.SelectedValue = CMState 
+
+        field_CMCntry.Text = CMCntry.Trim()
+        field_CMPostCode.Text = CMPostCode.Trim()
+
+        If CMActive = '1'
+            field_CMActive.Checked = '1'           
+        Else 
+            field_CMActive.Checked = '0'
+        EndIf
+
+        //field_CMActive.Checked = (CMActive = '1')
+
+        field_CMFax.Text = CMFax
+        field_CMPhone.Text = CMPhone
+
+        //field_CMCity.Focus()
+    EndSr
+
+    BegSr AssignFieldsFromUI
+        CMCustNo = field_CMCustNo.Text
+        CMName = field_CMName.Text.Trim()
+        CMAddr1 = field_CMAddr1.Text.Trim()
+        CMCity = field_CMCity.Text.Trim()
+
+        CMState = field_CMState.SelectedValue
+
+
+        // CMState = field_CMState.Text.Trim()
+        CMCntry = field_CMCntry.Text.Trim()
+        CMPostCode = field_CMPostCode.Text
+        If field_CMActive.Checked
+            CMActive = '1'
+        Else
+            CMActive = '0'
+        EndIf 
+        CMFax = field_CMFax.Text
+        CMPhone = field_CMPhone.Text
+    EndSr
+
+	BegSr buttonUpdateCustomer_Click Access(*Private) Event(*This.buttonUpdateCustomer.Click)
+		DclSrParm sender Type(*Object)
+		DclSrParm e Type(System.EventArgs)
+
+        If Page.IsValid
+            CMCustNo = Session['customer-number'].ToString() 
+            ReadSingleRow(CMCustNo)
+
+            AssignFieldsFromUI()
+        
+            Update CMastNewL1 
+
+            Session['update-customer-name'] = CMName 
+            Session['status'] = 'update' 
+            Response.Redirect(*This.ReferringPage)		
+        EndIf  
+	EndSr
+
+	BegSr buttonCancel_Click Access(*Private) Event(*This.buttonCancel.Click)
+		DclSrParm sender Type(*Object)
+		DclSrParm e Type(System.EventArgs)
+
+        // Be sure to set "CausesValidation" property on any button
+        // event handler that you do NOT want validation perform.
+
+        Session['status'] = 'cancel'
+        Response.Redirect(*This.ReferringPage)				
+	EndSr
+EndClass
