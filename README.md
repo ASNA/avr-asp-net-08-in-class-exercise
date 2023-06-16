@@ -1,12 +1,5 @@
-# New ASNA Visual RPG ASP.NET base project
+# ASNA AVR 2023 Web class -- student/teacher project
 
-This is a base project that includes:
-* BootStrap 5 is used via the CDN link in the `MasterPageNav.page`. For production work you should consider installing Bootstrap 5 locally.
-* Master page with three content placeholders. This master page provides a header, footer, and  minimal nav bar (via Bootstrap 5).
-* The applib.js file provides a static method (`Core.removeAspNetCheckboxWrapper(seelctor)`) you can use when needed with that use a checkbox to fix a ASP.NET issue that keeps its checkboxes from working correctly with BootStrap 5.
-* Errors are watched globally and shown with the `views/system/Error.aspx` page and logged to a text file in the 'error-logs' file when they occur.
-* A custom page-not-found page (`views/systems/pageNotFound.aspx`) when a 404 error occurs.
-* Use authentication is available using the `views/system/login.aspx.`
-* An `App_Code/StateHelpers` class is available to help with session and application state variable management.
-* An `App_Code/USStatesList` class is available to provide a states list for the dropdown control.
-* Soft-coded DataGate database names are available in `Web.Config`.
+This is the project that we created together in the June 2023 ASNA Web class. It is based on the [avr-asp-net-05-gridview](https://github.com/ASNA/avr-asp-net-05-gridview) project with one major exception: The *avr-asp-net-05-gridview gridview* project uses the *app_code/CustomerByNameList* class to partition away the file IO logic from the ASPX page's code behind. 
+
+Most of the customer's existing in-house projects have the file IO inline in the ASPX page code behind.  *avr-asp-net-05-gridview* that we did together more represents the customer's existing code. 
